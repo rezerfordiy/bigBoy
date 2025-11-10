@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cstring>
-./
+
 #include <QApplication>
 
 #include "Mainwindow.hpp"
