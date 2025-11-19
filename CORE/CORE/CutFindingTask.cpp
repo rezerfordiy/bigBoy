@@ -1,13 +1,13 @@
 #include <algorithm>
+#include <cmath>
 
-#include "Task2.hpp"
+#include "CutFindingTask.hpp"
 
-const std::vector<std::pair<Point, Point>>& Task2::getPathPoint() const {
-    return this->pathPoint;
+std::vector<std::pair<Point, Point>> const& CutFindingTask::getPathPoint() const {
+    return pathPoint;
 }
 
-
-bool Task2::process(Data const& other) {
+bool CutFindingTask::process(PathData const& other) {
     data = other;
     std::vector<Point> destinations = data.getDestinations();
     cord step = data.getWorkWidth() / 2;
@@ -17,7 +17,7 @@ bool Task2::process(Data const& other) {
     cord yMin = std::numeric_limits<cord>::max();
     cord yMax = std::numeric_limits<cord>::lowest();
     
-    for (const auto& p : destinations) {
+    for (auto const& p : destinations) {
         xMin = std::min(xMin, p.x());
         xMax = std::max(xMax, p.x());
         yMin = std::min(yMin, p.y());
@@ -79,7 +79,7 @@ bool Task2::process(Data const& other) {
         }
     }
 
-    cord extraStep = step; 
+    cord extraStep = step;
     for (cord x = xMin; x <= xMax; x += extraStep) {
         auto intersections = findIntersections(x, false);
         

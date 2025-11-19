@@ -1,5 +1,5 @@
-#ifndef Data_hpp
-#define Data_hpp
+#ifndef PathData_hpp
+#define PathData_hpp
 
 #include <vector>
 #include <fstream>
@@ -12,14 +12,14 @@
 namespace YAML {
 template<>
 struct convert<Point> {
-    static Node encode(const Point& rhs) {
+    static Node encode(Point const& rhs) {
         Node node;
         node["x"] = rhs.x();
         node["y"] = rhs.y();
         return node;
     }
 
-    static bool decode(const Node& node, Point& rhs) {
+    static bool decode(Node const& node, Point& rhs) {
         if (!node.IsMap() || !node["x"] || !node["y"]) {
             return false;
         }
@@ -30,50 +30,52 @@ struct convert<Point> {
 };
 }
 
-class Data {
+class PathData {
 public:
-    Data();
-    Data(const std::string& yamlFilePath);
+    enum class TaskType {
+        PATHFINDING = 1,
+        CUTFINDING
+    };
+    PathData();
+    PathData(std::string const& yamlFilePath);
     
-    bool loadFromYAML(const std::string& filePath);
+    bool loadFromYAML(std::string const& filePath);
     
-    const std::vector<Point>& getDestinations() const;
-    const ObstacleManager& getObstacleManager() const;
+    std::vector<Point> const& getDestinations() const;
+    ObstacleManager const& getObstacleManager() const;
     double getRadius() const;
     double getSpeed() const;
     double getWorkWidth() const;
-    int getTaskType() const;
+    TaskType getTaskType() const;
     Point getTopLeft() const;
     Point getBottomRight() const;
     
-    
-    void setDestinations(const std::vector<Point>& newDestinations);
+    void setDestinations(std::vector<Point> const& newDestinations);
     void setRadius(double newRadius);
     void setSpeed(double newSpeed);
     void setWorkWidth(double newWorkWidth);
-    void setTaskType(int newTaskType);
+    void setTaskType(TaskType newTaskType);
     
-    void addDestination(const Point& point);
+    void addDestination(Point const& point);
     void clearDestinations();
     size_t getDestinationsCount() const;
     
     bool updated = false;
+
 private:
     void update(cord x, cord y);
     void update(Point p);
+    
     std::vector<Point> destinations;
     ObstacleManager obstacleManager;
     
     cord radius;
     double speed;
     cord workWidth;
-    
-    int taskType;
+    TaskType taskType;
     
     Point highCords = Point(std::numeric_limits<cord>::lowest(), std::numeric_limits<cord>::lowest());
     Point lowerCords = Point(std::numeric_limits<cord>::max(), std::numeric_limits<cord>::max());
-    
-
 };
 
-#endif /* Data_hpp */
+#endif /* PathData_hpp */

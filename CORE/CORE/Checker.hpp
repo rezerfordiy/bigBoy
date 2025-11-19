@@ -1,5 +1,5 @@
-#ifndef checker_hpp
-#define checker_hpp
+#ifndef Checker_hpp
+#define Checker_hpp
 
 #include "Types.hpp"
 
@@ -9,4 +9,4 @@ public:
     virtual ~Checker() = default;
 };
 
-#endif /* checker_hpp */
+#endif /* Checker_hpp */

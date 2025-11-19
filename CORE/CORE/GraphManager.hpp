@@ -1,15 +1,14 @@
-
 #ifndef GraphManager_hpp
 #define GraphManager_hpp
 
 #include "Graph.hpp"
 
-class Data;
+class PathData;
 
 class GraphManager {
 public:
     GraphManager();
-    int build(Data const* data);
+    int build(PathData const* data);
 
     Graph graph;
 };

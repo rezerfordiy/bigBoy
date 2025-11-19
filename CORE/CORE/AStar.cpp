@@ -1,4 +1,5 @@
 #include <queue>
+#include <algorithm>
 
 #include "AStar.hpp"
 #include "Graph.hpp"
@@ -18,7 +19,7 @@ std::vector<int> AStar::operator()(int from, int to, Graph const& g) const {
     std::vector<int> cameFrom(g.nodes.size(), -1);
     
     gScore[from] = 0;
-    q.push({from, g.abs(g.nodes[from], g.nodes[to])}); // f = g + h
+    q.push({from, g.abs(g.nodes[from], g.nodes[to])});
     
     while (!q.empty()) {
         int current = q.top().first;
@@ -33,7 +34,7 @@ std::vector<int> AStar::operator()(int from, int to, Graph const& g) const {
             continue;
         }
         
-        for (const auto& neighborInfo : g.list[current]) {
+        for (auto const& neighborInfo : g.list[current]) {
             int neighbor = neighborInfo.first;
             double edgeCost = neighborInfo.second;
             

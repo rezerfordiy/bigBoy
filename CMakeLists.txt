@@ -13,9 +13,9 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 COMPONENTS Widgets REQUIRED)
 
-if(NOT TARGET my_lib)
+if(NOT TARGET CORE)
     message(STATUS "Library my_lib not found, building it...")
-    add_subdirectory(lib/my_lib)
+    add_subdirectory(CORE/CORE)
 endif()
 
 set(SOURCES
@@ -35,7 +35,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME}
     Qt6::Widgets
-    my_lib
+    CORE
 )
 
 if(APPLE)

@@ -13,6 +13,10 @@
 #include <QFile>
 #include <QPainterPath>
 #include <QGraphicsPathItem>
+#include <QPen>
+#include <QMenu>
+#include <QAction>
+#include <QMenuBar>
 
 #include "Mainwindow.hpp"
 #include "Solver.hpp"
@@ -32,12 +36,75 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),
     
     mainLayout->addLayout(controlLayout);
     mainLayout->addWidget(tabWidget);
+
+    QMenu* viewMenu = menuBar()->addMenu("View");
+    
+    showDroneAction = new QAction("Show Drone", this);
+    showDroneAction->setCheckable(true);
+    showDroneAction->setChecked(true);
+    
+    showCarAction = new QAction("Show Car", this);
+    showCarAction->setCheckable(true);
+    showCarAction->setChecked(true);
+    
+    viewMenu->addAction(showDroneAction);
+    viewMenu->addAction(showCarAction);
     
     connect(addButton, &QPushButton::clicked, this, &MainWindow::onAddButtonClicked);
     connect(tabNameInput, &QLineEdit::returnPressed, this, &MainWindow::onAddButtonClicked);
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, &MainWindow::onTabCloseRequested);
+    connect(showDroneAction, &QAction::triggered, this, &MainWindow::onShowDroneActionClicked);
+    connect(showCarAction, &QAction::triggered, this, &MainWindow::onShowCarActionClicked);
     
     tabWidget->setTabsClosable(true);
+}
+
+void MainWindow::onShowDroneActionClicked() {
+    updateAllTabsVisibility();
+}
+
+void MainWindow::onShowCarActionClicked() {
+    updateAllTabsVisibility();
+}
+
+void MainWindow::updateAllTabsVisibility() {
+    for (int i = 0; i < tabWidget->count(); ++i) {
+        updateTabVisibility(i);
+    }
+}
+
+void MainWindow::updateTabVisibility(int tabIndex) {
+    if (!tabItemsMap.contains(tabIndex)) {
+        return;
+    }
+    
+    TabGraphicsItems& items = tabItemsMap[tabIndex];
+    
+    bool showDrone = showDroneAction->isChecked();
+    bool showCar = showCarAction->isChecked();
+    
+    for (QGraphicsItem* item : items.dronePathItems) {
+        if (item) item->setVisible(showDrone);
+    }
+    for (QGraphicsItem* item : items.carPathItems) {
+        if (item) item->setVisible(showCar);
+    }
+}
+
+void MainWindow::addDronePathItem(QGraphicsItem* item, int tabIndex) {
+    if (!tabItemsMap.contains(tabIndex)) {
+        tabItemsMap[tabIndex] = TabGraphicsItems();
+    }
+    tabItemsMap[tabIndex].dronePathItems.append(item);
+    item->setVisible(showDroneAction->isChecked());
+}
+
+void MainWindow::addCarPathItem(QGraphicsItem* item, int tabIndex) {
+    if (!tabItemsMap.contains(tabIndex)) {
+        tabItemsMap[tabIndex] = TabGraphicsItems();
+    }
+    tabItemsMap[tabIndex].carPathItems.append(item);
+    item->setVisible(showCarAction->isChecked());
 }
 
 void MainWindow::onAddButtonClicked() {
@@ -58,9 +125,22 @@ void MainWindow::onAddButtonClicked() {
 
 void MainWindow::onTabCloseRequested(int index) {
     if (index >= 0) {
+        tabItemsMap.remove(index);
+        
+        QMap<int, TabGraphicsItems> newMap;
+        for (auto it = tabItemsMap.begin(); it != tabItemsMap.end(); it++) {
+            int oldIndex = it.key();
+            if (oldIndex > index) {
+                newMap[oldIndex - 1] = it.value();
+            } else if (oldIndex < index) {
+                newMap[oldIndex] = it.value();
+            }
+        }
+        tabItemsMap = newMap;
+        
         QWidget* widget = tabWidget->widget(index);
         tabWidget->removeTab(index);
-        delete widget;
+        delete widget; 
     }
 }
 
@@ -79,50 +159,71 @@ bool MainWindow::validateTabName(QString const& name) {
 }
 
 void MainWindow::createNewTab(QString const& name) {
-    QGraphicsScene* scene = new QGraphicsScene(this);
+    QWidget* tabContent = new QWidget(tabWidget);
+    QVBoxLayout* tabLayout = new QVBoxLayout(tabContent);
     
-    process(name, scene);
-    
+    QGraphicsScene* scene = new QGraphicsScene(tabContent);
     QGraphicsView* view = new QGraphicsView(scene);
+    
+    tabLayout->addWidget(view);
+    tabLayout->setContentsMargins(0, 0, 0, 0);
+    
+    int tabIndex = tabWidget->addTab(tabContent, name);
+    
+    process(name, scene, tabIndex);
     
     QRectF sceneRect = scene->itemsBoundingRect();
     sceneRect.adjust(-10, -10, 10, 10); 
     view->fitInView(sceneRect, Qt::KeepAspectRatio);
-    tabWidget->addTab(view, name);
 }
 
-bool MainWindow::process(QString const& path, QGraphicsScene* scene) {
-    const static int AMOUNT = 100;
+bool MainWindow::process(QString const& path, QGraphicsScene* scene, int tabIndex) {
+    constexpr static int AMOUNT = 100;
     std::string standart = path.toStdString();
     Solver slv = Solver(standart);
 
-    int type = slv.data.getTaskType();
-    if (type == 1) {
-        drawObstacleManager(&slv.task1.getData().getObstacleManager(), scene);
-        drawGraph(&slv.task1.getGraphManager().graph, scene);
+    PathData::TaskType type = slv.getData().getTaskType();
+    if (type == PathData::TaskType::PATHFINDING) {
+        drawObstacleManager(&slv.getPathFindingTask().getData().getObstacleManager(), scene);
+        drawGraph(&slv.getPathFindingTask().getGraphManager().graph, scene);
 
-        std::vector<Point> points;
-        for (int i = 0; i < slv.task1.getPathDubins().size(); i++) {
-            DubinsPath dubin = slv.task1.getPathDubins()[i];
+        std::vector<Point> carPoints;
+        for (int i = 0; i < slv.getPathFindingTask().getPathDubins().size(); i++) {
+            DubinsPath dubin = slv.getPathFindingTask().getPathDubins()[i];
             cord length = dubin.length();
             if (length > 0) {
                 for (int j = 0; j < AMOUNT; j++) {
                     cord t = (length * j) / AMOUNT;      
                     DubinsConfiguration conf = dubin.sample(t);
-                    points.emplace_back(conf.x, conf.y);
+                    carPoints.emplace_back(conf.x, conf.y);
                 }
             }
         }
-        drawPolyLine(points, scene);
+        
+        QPen greenPen(Qt::green);
+        greenPen.setWidth(5);
+        QList<QGraphicsItem*> carPathItems = drawPolyLine(carPoints, scene, greenPen);
+        for (QGraphicsItem* item : carPathItems) {
+            addCarPathItem(item, tabIndex);
+        }
 
-    } else if (type == 2) {
-        drawPolyLine(slv.data.getDestinations(), scene, 2);
-        drawSegments(slv.task2.getPathPoint(), scene, slv.data.getWorkWidth());
+        std::vector<Point> dronePoints = slv.getPathFindingTask().getPathPoint();
+        QPen bluePen(Qt::red);
+        bluePen.setWidth(3);
+        QList<QGraphicsItem*> dronePathItems = drawPolyLine(dronePoints, scene, bluePen);
+        for (QGraphicsItem* item : dronePathItems) {
+            addDronePathItem(item, tabIndex);
+        }
+
+    } else if (type == PathData::TaskType::CUTFINDING) {
+        drawPolyLine(slv.getData().getDestinations(), scene, QPen(Qt::darkGreen), true);
+        drawSegments(slv.getTask2().getPathPoint(), scene, slv.getData().getWorkWidth());
     } else {
         QMessageBox::warning(this, "data error", "unknown type");
-
     }
+    return true;
 }
+
 void MainWindow::drawGraph(Graph const* graph, QGraphicsScene* scene) {
     for (const auto& node : graph->nodes) {
         QGraphicsEllipseItem* point = new QGraphicsEllipseItem(node.x - 2, node.y - 2, 4, 4);
@@ -155,9 +256,11 @@ void MainWindow::drawObstacleManager(ObstacleManager const* manager, QGraphicsSc
 }
 
 
-void MainWindow::drawPolyLine(std::vector<Point> const& points, QGraphicsScene* scene, int type) {
+QList<QGraphicsItem*> MainWindow::drawPolyLine(std::vector<Point> const& points, QGraphicsScene* scene, QPen const& pen, bool isClosed) {
+    QList<QGraphicsItem*> items;
+    
     if (points.empty() || scene == nullptr) {
-        return;
+        return items;
     }
     
     QPainterPath path;
@@ -169,16 +272,15 @@ void MainWindow::drawPolyLine(std::vector<Point> const& points, QGraphicsScene* 
     for (size_t i = 1; i < points.size(); ++i) {
         path.lineTo(points[i].x(), points[i].y());
     }
-    if (type == 2) {
+    if (isClosed) {
         path.lineTo(points[0].x(), points[0].y());
     }
     
     QGraphicsPathItem* pathItem = scene->addPath(path);
+    pathItem->setPen(pen);
+    items.append(pathItem);
     
-    QPen greenPen(Qt::green);
-    greenPen.setWidth(5); 
-    
-    pathItem->setPen(greenPen);
+    return items;
 }
 
 void MainWindow::drawSegments(std::vector<std::pair<Point, Point>> const& segments, QGraphicsScene* scene, cord width) {

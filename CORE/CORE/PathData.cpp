@@ -1,13 +1,13 @@
-#include "Data.hpp"
+#include "PathData.hpp"
 
-Data::Data() : radius(0.0), speed(0.0), workWidth(0.0), taskType(0) {
+PathData::PathData() : radius(0.0), speed(0.0), workWidth(0.0), taskType(PathData::TaskType::CUTFINDING) {
 }
 
-Data::Data(const std::string& yamlFilePath) : radius(0.0), speed(0.0), workWidth(0.0), taskType(0) {
+PathData::PathData(std::string const& yamlFilePath) : radius(0.0), speed(0.0), workWidth(0.0), taskType(PathData::TaskType::CUTFINDING) {
     loadFromYAML(yamlFilePath);
 }
 
-bool Data::loadFromYAML(const std::string& filePath) {
+bool PathData::loadFromYAML(std::string const& filePath) {
     try {
         YAML::Node config = YAML::LoadFile(filePath);
         
@@ -20,11 +20,11 @@ bool Data::loadFromYAML(const std::string& filePath) {
         
         if (config["task"]) {
             YAML::Node taskNode = config["task"];
-            if (taskNode["type"]) taskType = taskNode["type"].as<int>();
+            if (taskNode["type"]) taskType = TaskType(taskNode["type"].as<int>());
             
             if (taskNode["obstacles"]) {
                 obstacleManager.clear();
-                for (const auto& pairNode : taskNode["obstacles"]) {
+                for (auto const& pairNode : taskNode["obstacles"]) {
                     Point p1(pairNode[0]["x"].as<cord>(), pairNode[0]["y"].as<cord>());
                     Point p2(pairNode[1]["x"].as<cord>(), pairNode[1]["y"].as<cord>());
                     obstacleManager.add(p1.x(), p1.y(), p2.x(), p2.y());
@@ -35,7 +35,7 @@ bool Data::loadFromYAML(const std::string& filePath) {
             
             if (taskNode["destinations"]) {
                 destinations.clear();
-                for (const auto& pointNode : taskNode["destinations"]) {
+                for (auto const& pointNode : taskNode["destinations"]) {
                     Point p(pointNode["x"].as<cord>(), pointNode["y"].as<cord>());
                     destinations.push_back(p);
                     update(p);
@@ -44,80 +44,80 @@ bool Data::loadFromYAML(const std::string& filePath) {
         }
         
         return true;
-    } catch (const YAML::Exception& e) {
+    } catch (YAML::Exception const& e) {
         std::cerr << "YAML mistake: " << e.what() << std::endl;
         return false;
-    } catch (const std::exception& e) {
+    } catch (std::exception const& e) {
         std::cerr << "Error loading YAML: " << e.what() << std::endl;
         return false;
     }
 }
 
-const std::vector<Point>& Data::getDestinations() const {
+std::vector<Point> const& PathData::getDestinations() const {
     return destinations;
 }
 
-const ObstacleManager& Data::getObstacleManager() const {
+ObstacleManager const& PathData::getObstacleManager() const {
     return obstacleManager;
 }
 
-double Data::getRadius() const {
+double PathData::getRadius() const {
     return radius;
 }
 
-double Data::getSpeed() const {
+double PathData::getSpeed() const {
     return speed;
 }
 
-double Data::getWorkWidth() const {
+double PathData::getWorkWidth() const {
     return workWidth;
 }
 
-int Data::getTaskType() const {
+PathData::TaskType PathData::getTaskType() const {
     return taskType;
 }
 
-Point Data::getTopLeft() const {
+Point PathData::getTopLeft() const {
     return lowerCords;
 }
-Point Data::getBottomRight() const {
+
+Point PathData::getBottomRight() const {
     return highCords;
 }
 
-void Data::setDestinations(const std::vector<Point>& newDestinations) {
+void PathData::setDestinations(std::vector<Point> const& newDestinations) {
     destinations = newDestinations;
 }
 
-void Data::setRadius(double newRadius) {
+void PathData::setRadius(double newRadius) {
     radius = newRadius;
 }
 
-void Data::setSpeed(double newSpeed) {
+void PathData::setSpeed(double newSpeed) {
     speed = newSpeed;
 }
 
-void Data::setWorkWidth(double newWorkWidth) {
+void PathData::setWorkWidth(double newWorkWidth) {
     workWidth = newWorkWidth;
 }
 
-void Data::setTaskType(int newTaskType) {
+void PathData::setTaskType(PathData::TaskType newTaskType) {
     taskType = newTaskType;
 }
 
-void Data::addDestination(const Point& point) {
+void PathData::addDestination(Point const& point) {
     destinations.push_back(point);
 }
 
-void Data::clearDestinations() {
+void PathData::clearDestinations() {
     destinations.clear();
 }
 
-size_t Data::getDestinationsCount() const {
+size_t PathData::getDestinationsCount() const {
     return destinations.size();
 }
 
-
-void Data::update(cord x, cord y) {
+void PathData::update(cord x, cord y) {
     updated = true;
     highCords.x(fmax(highCords.x(), x));
     highCords.y(fmax(highCords.y(), y));
@@ -126,6 +126,6 @@ void Data::update(cord x, cord y) {
     lowerCords.y(fmin(lowerCords.y(), y));
 }
 
-void Data::update(Point p) {
+void PathData::update(Point p) {
     update(p.x(), p.y());
 }

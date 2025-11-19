@@ -1,6 +1,7 @@
 #ifdef _WIN32
 #define _USE_MATH_DEFINES
 #endif
+
 #include <math.h>
 #include <cmath>
 #include <stdexcept>
@@ -10,16 +11,14 @@
 
 #include "Dubins.hpp"
 
-namespace
-{
-    enum SegmentType
-    {
+namespace {
+    enum SegmentType {
         L_SEG = 0,
         S_SEG = 1,
         R_SEG = 2
     };
 
-    const SegmentType DIRDATA[][3] = {
+    SegmentType const DIRDATA[][3] = {
         { L_SEG, S_SEG, L_SEG },
         { L_SEG, S_SEG, R_SEG },
         { R_SEG, S_SEG, L_SEG },
@@ -29,14 +28,14 @@ namespace
     };
 }
 
-DubinsPath::DubinsPath(const DubinsConfiguration& start, const cord param[3], cord rho, DubinsPathType type)
+DubinsPath::DubinsPath(DubinsConfiguration const& start, cord const param[3], cord rho, DubinsPathType type)
     : start(start), rho(rho), type(type) {
     this->param[0] = param[0];
     this->param[1] = param[1];
     this->param[2] = param[2];
 }
 
-cord DubinsPath::get_param(int i) const {
+cord DubinsPath::getParam(int i) const {
     if (i < 0 || i > 2) {
         throw std::out_of_range("Segment index must be between 0 and 2");
     }
@@ -48,18 +47,18 @@ cord DubinsPath::length() const {
 }
 
 cord DubinsPath::segmentLength(int i) const {
-    return get_param(i) * rho;
+    return getParam(i) * rho;
 }
 
 cord DubinsPath::segmentLengthNormalized(int i) const {
-    return get_param(i);
+    return getParam(i);
 }
 
 DubinsConfiguration DubinsPath::sample(cord t) const {
     return DubinsSolver::samplePath(*this, t);
 }
 
-DubinsConfiguration DubinsPath::endpoint() const {
+DubinsConfiguration DubinsPath::endPoint() const {
     return sample(length() - 1e-10);
 }
 
@@ -98,17 +97,17 @@ cord DubinsSolver::mod2pi(cord theta) {
     return fmodr(theta, 2 * M_PI);
 }
 
-DubinsConfiguration DubinsSolver::samplePath(const DubinsPath& path, cord t) {
+DubinsConfiguration DubinsSolver::samplePath(DubinsPath const& path, cord t) {
     if (t < 0 || t > path.length()) {
         throw std::invalid_argument("Parameter t is out of range");
     }
 
-    cord tprime = t / path.get_rho();
-    DubinsConfiguration qi(0.0, 0.0, path.get_start().theta);
-    const SegmentType* types = DIRDATA[static_cast<int>(path.get_type())];
+    cord tprime = t / path.getRho();
+    DubinsConfiguration qi(0.0, 0.0, path.getStart().theta);
+    SegmentType const* types = DIRDATA[static_cast<int>(path.getType())];
     
-    cord p1 = path.get_param(0);
-    cord p2 = path.get_param(1);
+    cord p1 = path.getParam(0);
+    cord p2 = path.getParam(1);
     
     DubinsConfiguration q1 = dubinsSegment(p1, qi, types[0]);
     DubinsConfiguration q2 = dubinsSegment(p2, q1, types[1]);
@@ -116,31 +115,29 @@ DubinsConfiguration DubinsSolver::samplePath(const DubinsPath& path, cord t) {
     DubinsConfiguration result;
     if (tprime < p1) {
         result = dubinsSegment(tprime, qi, types[0]);
-    }
-    else if (tprime < (p1 + p2)) {
+    } else if (tprime < (p1 + p2)) {
         result = dubinsSegment(tprime - p1, q1, types[1]);
-    }
-    else {
+    } else {
         result = dubinsSegment(tprime - p1 - p2, q2, types[2]);
     }
     
-    result.x = result.x * path.get_rho() + path.get_start().x;
-    result.y = result.y * path.get_rho() + path.get_start().y;
+    result.x = result.x * path.getRho() + path.getStart().x;
+    result.y = result.y * path.getRho() + path.getStart().y;
     result.theta = mod2pi(result.theta);
     
     return result;
 }
 
-std::unique_ptr<DubinsPath> DubinsSolver::shortestPath(const DubinsConfiguration& q0, const DubinsConfiguration& q1, cord rho) {
+std::unique_ptr<DubinsPath> DubinsSolver::shortestPath(DubinsConfiguration const& q0, DubinsConfiguration const& q1, cord rho) {
     IntermediateResults in;
     int errcode = calculateIntermediateResults(&in, q0, q1, rho);
     if (errcode != DubinsError::OK) {
         return nullptr;
     }
 
-    cord best_cost = std::numeric_limits<cord>::infinity();
-    cord best_params[3] = {0, 0, 0};
-    DubinsPathType best_type = DubinsPathType::LSL;
+    cord bestCost = std::numeric_limits<cord>::infinity();
+    cord bestParams[3] = {0, 0, 0};
+    DubinsPathType bestType = DubinsPathType::LSL;
 
     for (int i = 0; i < 6; i++) {
         DubinsPathType pathType = static_cast<DubinsPathType>(i);
@@ -148,24 +145,24 @@ std::unique_ptr<DubinsPath> DubinsSolver::shortestPath(const DubinsConfiguration
         
         if (dubinsWord(&in, pathType, params) == DubinsError::OK) {
             cord cost = params[0] + params[1] + params[2];
-            if (cost < best_cost) {
-                best_cost = cost;
-                best_params[0] = params[0];
-                best_params[1] = params[1];
-                best_params[2] = params[2];
-                best_type = pathType;
+            if (cost < bestCost) {
+                bestCost = cost;
+                bestParams[0] = params[0];
+                bestParams[1] = params[1];
+                bestParams[2] = params[2];
+                bestType = pathType;
             }
         }
     }
 
-    if (best_cost == std::numeric_limits<cord>::infinity()) {
+    if (bestCost == std::numeric_limits<cord>::infinity()) {
         return nullptr;
     }
 
-    return std::make_unique<DubinsPath>(q0, best_params, rho, best_type);
+    return std::make_unique<DubinsPath>(q0, bestParams, rho, bestType);
 }
 
-std::unique_ptr<DubinsPath> DubinsSolver::path(const DubinsConfiguration& q0, const DubinsConfiguration& q1, cord rho, DubinsPathType pathType) {
+std::unique_ptr<DubinsPath> DubinsSolver::path(DubinsConfiguration const& q0, DubinsConfiguration const& q1, cord rho, DubinsPathType pathType) {
     IntermediateResults in;
     int errcode = calculateIntermediateResults(&in, q0, q1, rho);
     if (errcode != DubinsError::OK) {
@@ -181,7 +178,7 @@ std::unique_ptr<DubinsPath> DubinsSolver::path(const DubinsConfiguration& q0, co
     return std::make_unique<DubinsPath>(q0, params, rho, pathType);
 }
 
-int DubinsSolver::sampleMany(const DubinsPath& path, cord stepSize, const SamplingCallback& callback) {
+int DubinsSolver::sampleMany(DubinsPath const& path, cord stepSize, SamplingCallback const& callback) {
     cord x = 0.0;
     cord length = path.length();
     
@@ -196,7 +193,7 @@ int DubinsSolver::sampleMany(const DubinsPath& path, cord stepSize, const Sampli
     return 0;
 }
 
-int DubinsSolver::calculateIntermediateResults(IntermediateResults* in, const DubinsConfiguration& q0, const DubinsConfiguration& q1, cord rho) {
+int DubinsSolver::calculateIntermediateResults(IntermediateResults* in, DubinsConfiguration const& q0, DubinsConfiguration const& q1, cord rho) {
     if (rho <= 0.0) {
         return DubinsError::BADRHO;
     }
@@ -221,13 +218,13 @@ int DubinsSolver::calculateIntermediateResults(IntermediateResults* in, const Du
     in->sb = sin(beta);
     in->ca = cos(alpha);
     in->cb = cos(beta);
-    in->c_ab = cos(alpha - beta);
-    in->d_sq = d * d;
+    in->cAb = cos(alpha - beta);
+    in->dSq = d * d;
 
     return DubinsError::OK;
 }
 
-DubinsConfiguration DubinsSolver::dubinsSegment(cord t, const DubinsConfiguration& qi, int segmentType) {
+DubinsConfiguration DubinsSolver::dubinsSegment(cord t, DubinsConfiguration const& qi, int segmentType) {
     cord st = sin(qi.theta);
     cord ct = cos(qi.theta);
     DubinsConfiguration qt;
@@ -236,13 +233,11 @@ DubinsConfiguration DubinsSolver::dubinsSegment(cord t, const DubinsConfiguratio
         qt.x = +sin(qi.theta + t) - st;
         qt.y = -cos(qi.theta + t) + ct;
         qt.theta = t;
-    }
-    else if (segmentType == R_SEG) {
+    } else if (segmentType == R_SEG) {
         qt.x = -sin(qi.theta - t) + st;
         qt.y = +cos(qi.theta - t) - ct;
         qt.theta = -t;
-    }
-    else if (segmentType == S_SEG) {
+    } else if (segmentType == S_SEG) {
         qt.x = ct * t;
         qt.y = st * t;
         qt.theta = 0.0;
@@ -255,39 +250,39 @@ DubinsConfiguration DubinsSolver::dubinsSegment(cord t, const DubinsConfiguratio
     return qt;
 }
 
-int DubinsSolver::dubinsLSL(const IntermediateResults* in, cord out[3]) {
+int DubinsSolver::dubinsLSL(IntermediateResults const* in, cord out[3]) {
     cord tmp0 = in->d + in->sa - in->sb;
-    cord p_sq = 2 + in->d_sq - (2 * in->c_ab) + (2 * in->d * (in->sa - in->sb));
+    cord pSq = 2 + in->dSq - (2 * in->cAb) + (2 * in->d * (in->sa - in->sb));
 
-    if (p_sq >= 0) {
+    if (pSq >= 0) {
         cord tmp1 = atan2((in->cb - in->ca), tmp0);
         out[0] = mod2pi(tmp1 - in->alpha);
-        out[1] = sqrt(p_sq);
+        out[1] = sqrt(pSq);
         out[2] = mod2pi(in->beta - tmp1);
         return DubinsError::OK;
     }
     return DubinsError::NOPATH;
 }
 
-int DubinsSolver::dubinsRSR(const IntermediateResults* in, cord out[3]) {
+int DubinsSolver::dubinsRSR(IntermediateResults const* in, cord out[3]) {
     cord tmp0 = in->d - in->sa + in->sb;
-    cord p_sq = 2 + in->d_sq - (2 * in->c_ab) + (2 * in->d * (in->sb - in->sa));
+    cord pSq = 2 + in->dSq - (2 * in->cAb) + (2 * in->d * (in->sb - in->sa));
     
-    if (p_sq >= 0) {
+    if (pSq >= 0) {
         cord tmp1 = atan2((in->ca - in->cb), tmp0);
         out[0] = mod2pi(in->alpha - tmp1);
-        out[1] = sqrt(p_sq);
+        out[1] = sqrt(pSq);
         out[2] = mod2pi(tmp1 - in->beta);
         return DubinsError::OK;
     }
     return DubinsError::NOPATH;
 }
 
-int DubinsSolver::dubinsLSR(const IntermediateResults* in, cord out[3]) {
-    cord p_sq = -2 + in->d_sq + (2 * in->c_ab) + (2 * in->d * (in->sa + in->sb));
+int DubinsSolver::dubinsLSR(IntermediateResults const* in, cord out[3]) {
+    cord pSq = -2 + in->dSq + (2 * in->cAb) + (2 * in->d * (in->sa + in->sb));
     
-    if (p_sq >= 0) {
-        cord p = sqrt(p_sq);
+    if (pSq >= 0) {
+        cord p = sqrt(pSq);
         cord tmp0 = atan2((-in->ca - in->cb), (in->d + in->sa + in->sb)) - atan2(-2.0, p);
         out[0] = mod2pi(tmp0 - in->alpha);
         out[1] = p;
@@ -297,11 +292,11 @@ int DubinsSolver::dubinsLSR(const IntermediateResults* in, cord out[3]) {
     return DubinsError::NOPATH;
 }
 
-int DubinsSolver::dubinsRSL(const IntermediateResults* in, cord out[3]) {
-    cord p_sq = -2 + in->d_sq + (2 * in->c_ab) - (2 * in->d * (in->sa + in->sb));
+int DubinsSolver::dubinsRSL(IntermediateResults const* in, cord out[3]) {
+    cord pSq = -2 + in->dSq + (2 * in->cAb) - (2 * in->d * (in->sa + in->sb));
     
-    if (p_sq >= 0) {
-        cord p = sqrt(p_sq);
+    if (pSq >= 0) {
+        cord p = sqrt(pSq);
         cord tmp0 = atan2((in->ca + in->cb), (in->d - in->sa - in->sb)) - atan2(2.0, p);
         out[0] = mod2pi(in->alpha - tmp0);
         out[1] = p;
@@ -311,8 +306,8 @@ int DubinsSolver::dubinsRSL(const IntermediateResults* in, cord out[3]) {
     return DubinsError::NOPATH;
 }
 
-int DubinsSolver::dubinsRLR(const IntermediateResults* in, cord out[3]) {
-    cord tmp0 = (6.0 - in->d_sq + 2 * in->c_ab + 2 * in->d * (in->sa - in->sb)) / 8.0;
+int DubinsSolver::dubinsRLR(IntermediateResults const* in, cord out[3]) {
+    cord tmp0 = (6.0 - in->dSq + 2 * in->cAb + 2 * in->d * (in->sa - in->sb)) / 8.0;
     cord phi = atan2(in->ca - in->cb, in->d - in->sa + in->sb);
     
     if (fabs(tmp0) <= 1) {
@@ -326,8 +321,8 @@ int DubinsSolver::dubinsRLR(const IntermediateResults* in, cord out[3]) {
     return DubinsError::NOPATH;
 }
 
-int DubinsSolver::dubinsLRL(const IntermediateResults* in, cord out[3]) {
-    cord tmp0 = (6.0 - in->d_sq + 2 * in->c_ab + 2 * in->d * (in->sb - in->sa)) / 8.0;
+int DubinsSolver::dubinsLRL(IntermediateResults const* in, cord out[3]) {
+    cord tmp0 = (6.0 - in->dSq + 2 * in->cAb + 2 * in->d * (in->sb - in->sa)) / 8.0;
     cord phi = atan2(in->ca - in->cb, in->d + in->sa - in->sb);
     
     if (fabs(tmp0) <= 1) {
@@ -341,7 +336,7 @@ int DubinsSolver::dubinsLRL(const IntermediateResults* in, cord out[3]) {
     return DubinsError::NOPATH;
 }
 
-int DubinsSolver::dubinsWord(const IntermediateResults* in, DubinsPathType pathType, cord out[3]) {
+int DubinsSolver::dubinsWord(IntermediateResults const* in, DubinsPathType pathType, cord out[3]) {
     switch (pathType) {
         case DubinsPathType::LSL: return dubinsLSL(in, out);
         case DubinsPathType::RSL: return dubinsRSL(in, out);

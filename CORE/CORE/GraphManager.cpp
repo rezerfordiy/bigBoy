@@ -1,10 +1,9 @@
 #include "GraphManager.hpp"
-#include "Data.hpp"
+#include "PathData.hpp"
 
 GraphManager::GraphManager() {}
 
-
-int GraphManager::build(Data const* data) {
+int GraphManager::build(PathData const* data) {
     std::vector<Point> points;
     for (auto const& ob : data->getObstacleManager().get()) {
         auto pnts = ob.getPoints();
@@ -12,7 +11,6 @@ int GraphManager::build(Data const* data) {
     }
     
     if (points.empty() || !data->updated) { return 1; }
-    
     
     auto fakeOb = Obstacle(data->getTopLeft().x() - 50, data->getTopLeft().y() - 50, data->getBottomRight().x() + 50, data->getBottomRight().y() + 50);
     auto fakePoints = fakeOb.getPoints();
@@ -22,8 +20,8 @@ int GraphManager::build(Data const* data) {
         VoronoiDiagram vd;
         boost::polygon::construct_voronoi(points.begin(), points.end(), &vd);
         graph.buildFromVoronoi(vd, data);
-    } catch (const std::exception& e) {
-        std::cerr << "Ошибка при построении диаграммы";
+    } catch (std::exception const& e) {
+        std::cerr << "error voronoy";
         return 1;
     }
     

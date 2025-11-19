@@ -1,26 +1,28 @@
-#include "Task1.hpp"
+#include "PathFindingTask.hpp"
 #include "AStar.hpp"
 #include "RangedDubinsSolver.hpp"
 
-const GraphManager& Task1::getGraphManager() const {
+GraphManager const& PathFindingTask::getGraphManager() const {
     return gm;
 }
-const Data& Task1::getData() const {
+
+PathData const& PathFindingTask::getData() const {
     return data;
 }
-const std::vector<int>& Task1::getPathIndexes() const {
+
+std::vector<int> const& PathFindingTask::getPathIndexes() const {
     return pathIndexes;
 }
 
-const std::vector<DubinsPath>& Task1::getPathDubins() const {
+std::vector<DubinsPath> const& PathFindingTask::getPathDubins() const {
     return pathDubins;
 }
 
-const std::vector<Point>& Task1::getPathPoint() const {
+std::vector<Point> const& PathFindingTask::getPathPoint() const {
     return pathPoint;
 }
 
-bool Task1::process(Data const& other) {
+bool PathFindingTask::process(PathData const& other) {
     data = other;
     gm.build(&data);
     
@@ -55,7 +57,7 @@ bool Task1::process(Data const& other) {
         
         cord dx = x2 - x1;
         cord dy = y2 - y1;
-        cord distance = sqrt(dx*dx + dy*dy);
+        cord distance = sqrt(dx * dx + dy * dy);
         
         if (distance < 0.1) continue;
         
@@ -63,12 +65,12 @@ bool Task1::process(Data const& other) {
         cord thetaEnd = thetaStart;
         
         if (i + 1 < pathIndexes.size()) {
-            int nextId = pathIndexes[i+1];
+            int nextId = pathIndexes[i + 1];
             cord x3 = gm.graph.nodes[nextId].x;
             cord y3 = gm.graph.nodes[nextId].y;
             cord dxNext = x3 - x2;
             cord dyNext = y3 - y2;
-            if (sqrt(dxNext*dxNext + dyNext*dyNext) > 0.1) {
+            if (sqrt(dxNext * dxNext + dyNext * dyNext) > 0.1) {
                 thetaEnd = atan2(dyNext, dxNext);
             }
         }
@@ -79,12 +81,9 @@ bool Task1::process(Data const& other) {
         auto solver = RangedDubinsSolver(data.getRadius(), data.getRadius() * 10, 5, 0.1, &data.getObstacleManager());
         
         if (auto dubinsPath = solver.shortestPath(q0, q1, -2)) {
-            this->pathDubins.push_back(*dubinsPath.get());
+            pathDubins.push_back(*dubinsPath.get());
         }
     }
     
-    
     return 0;
 }
-
-
