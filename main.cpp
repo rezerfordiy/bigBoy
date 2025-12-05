@@ -6,9 +6,8 @@
 
 #include "Mainwindow.hpp"
 #include "Solver.hpp"
+#include "CarPathPlanner.hpp"
 
-
-constexpr int AMOUNT = 100;
 
 void printObstacles(const ObstacleManager& obstacleManager) {
     for (auto const& ob : obstacleManager.get()) {
@@ -31,23 +30,6 @@ void printGraphEdges(const Graph& graph) {
         cord y2 = graph.nodes[edge.to].y;
         std::cout << "GRAPH_EDGE: " << x1 << ", " << y1 << " -> " << x2 << ", " << y2 << std::endl;
     }
-}
-
-std::vector<Point> sampleDubinsPath(const std::vector<DubinsPath>& dubinsPaths) {
-    std::vector<Point> points;
-    
-    for (const auto& dubin : dubinsPaths) {
-        cord length = dubin.length();
-        if (length <= 0) continue;
-        
-        for (int j = 0; j < AMOUNT; j++) {
-            cord t = (length * j) / AMOUNT;      
-            DubinsConfiguration conf = dubin.sample(t);
-            points.emplace_back(conf.x, conf.y);
-        }
-    }
-    
-    return points;
 }
 
 void printPathPoints(const std::vector<Point>& points) {
@@ -76,21 +58,25 @@ void printVerticalCoverage(const Point& p1, const Point& p2, cord workWidth) {
               << workWidth << ", " << bottomY - topY << std::endl;
 }
 
-void processTask1(Solver& slv) {
+void processFind(Solver& slv) {
     auto& task1 = slv.getPathFindingTask();
-    auto& obstacleManager = task1.getData().getObstacleManager();
-    auto& graph = task1.getGraphManager().graph;
-    const auto& dubinsPaths = task1.getPathDubins();
+    auto& obstacleManager = slv.getData().getObstacleManager();
+    auto& graph = (dynamic_cast<CarPathPlanner const*>(slv.getPathFindingTask()[PathFindingTask::Type::CAR])->getGraphManager().graph);
     
     printObstacles(obstacleManager);
     printGraphNodes(graph);
     printGraphEdges(graph);
-    
-    auto pathPoints = sampleDubinsPath(dubinsPaths);
-    printPathPoints(pathPoints);
+
+    std::cout << "CAR POINTS:\n";
+    printPathPoints(task1[PathFindingTask::Type::CAR]->getPath());
+
+
+    std::cout << "DRONE POINTS:\n";
+    printPathPoints(task1[PathFindingTask::Type::DRONE]->getPath());
+
 }
 
-void processTask2(Solver& slv) {
+void processCut(Solver& slv) {
     auto segments = slv.getTask2().getPathPoint();
     cord workWidth = slv.getData().getWorkWidth();
     
@@ -115,10 +101,10 @@ int runCoreMode(const std::string& filePath) {
     
     switch (type) {
         case PathData::TaskType::PATHFINDING:
-            processTask1(slv);
+            processFind(slv);
             break;
         case PathData::TaskType::CUTFINDING:
-            processTask2(slv);
+            processCut(slv);
             break;
         default:
             std::cerr << "Data error: unknown type " << (int)type << std::endl;

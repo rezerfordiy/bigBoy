@@ -20,6 +20,7 @@
 
 #include "Mainwindow.hpp"
 #include "Solver.hpp"
+#include "CarPathPlanner.hpp"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),
                                         tabWidget(new QTabWidget(this)), 
@@ -184,21 +185,10 @@ bool MainWindow::process(QString const& path, QGraphicsScene* scene, int tabInde
 
     PathData::TaskType type = slv.getData().getTaskType();
     if (type == PathData::TaskType::PATHFINDING) {
-        drawObstacleManager(&slv.getPathFindingTask().getData().getObstacleManager(), scene);
-        drawGraph(&slv.getPathFindingTask().getGraphManager().graph, scene);
+        drawObstacleManager(&slv.getData().getObstacleManager(), scene);
+        drawGraph(&(dynamic_cast<CarPathPlanner const*>(slv.getPathFindingTask()[PathFindingTask::Type::CAR])->getGraphManager().graph), scene);
 
-        std::vector<Point> carPoints;
-        for (int i = 0; i < slv.getPathFindingTask().getPathDubins().size(); i++) {
-            DubinsPath dubin = slv.getPathFindingTask().getPathDubins()[i];
-            cord length = dubin.length();
-            if (length > 0) {
-                for (int j = 0; j < AMOUNT; j++) {
-                    cord t = (length * j) / AMOUNT;      
-                    DubinsConfiguration conf = dubin.sample(t);
-                    carPoints.emplace_back(conf.x, conf.y);
-                }
-            }
-        }
+        std::vector<Point> carPoints = slv.getPathFindingTask().getPointsByType(PathFindingTask::Type::CAR);
         
         QPen greenPen(Qt::green);
         greenPen.setWidth(5);
@@ -207,7 +197,7 @@ bool MainWindow::process(QString const& path, QGraphicsScene* scene, int tabInde
             addCarPathItem(item, tabIndex);
         }
 
-        std::vector<Point> dronePoints = slv.getPathFindingTask().getPathPoint();
+        std::vector<Point> dronePoints = slv.getPathFindingTask().getPointsByType(PathFindingTask::Type::DRONE);
         QPen bluePen(Qt::red);
         bluePen.setWidth(3);
         QList<QGraphicsItem*> dronePathItems = drawPolyLine(dronePoints, scene, bluePen);

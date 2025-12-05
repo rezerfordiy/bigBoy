@@ -1,28 +1,45 @@
 #ifndef PathFindingTask_hpp
 #define PathFindingTask_hpp
 
-#include <string>
+#include <unordered_map>
+#include <vector>
 
-#include "GraphManager.hpp"
 #include "PathData.hpp"
-#include "Dubins.hpp"
+
+class PathPlanner;
 
 class PathFindingTask {
 public:
-    bool process(PathData const& other);
-    
-    GraphManager const& getGraphManager() const;
-    PathData const& getData() const;
-    std::vector<int> const& getPathIndexes() const;
-    std::vector<DubinsPath> const& getPathDubins() const;
-    std::vector<Point> const& getPathPoint() const;
+    enum class Type {
+        CAR,
+        DRONE
+    };
 
 private:
-    std::vector<int> pathIndexes;
-    std::vector<Point> pathPoint;
-    std::vector<DubinsPath> pathDubins;
-    PathData data;
-    GraphManager gm;
+    struct TypeHash {
+        size_t operator()(Type t) const {
+            return static_cast<size_t>(t);
+        }
+    };
+    
+public:
+    PathFindingTask() = default;
+    
+    PathFindingTask(const PathFindingTask& other) = delete;
+    PathFindingTask(PathFindingTask&& other) = delete;
+    PathFindingTask& operator=(const PathFindingTask& other) = delete;
+    PathFindingTask& operator=(PathFindingTask&& other) = delete;
+    
+    ~PathFindingTask() {
+        clear();  
+    }
+    
+    bool process(const PathData& data);
+    std::vector<Point> getPointsByType(Type t) const;
+    PathPlanner const* operator[](Type t) const;
+    void clear();
+private:
+    std::unordered_map<Type, PathPlanner*, TypeHash> planMap;
 };
 
 #endif /* PathFindingTask_hpp */

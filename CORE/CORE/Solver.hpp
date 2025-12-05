@@ -19,8 +19,8 @@ public:
 
 private:
     PathData data;
-    PathFindingTask task1;
-    CutFindingTask task2;
+    PathFindingTask pathFindingTask;
+    CutFindingTask cutFindingTask;
 };
 
 #endif /* Solver_hpp */
